@@ -1,0 +1,28 @@
+[gd_scene load_steps=6 format=3]
+[ext_resource type="Script" path="res://scripts/character_select.gd" id="1_sel_script"]
+[sub_resource type="PlaneMesh" id="PlaneMesh_pedestal"]  size = Vector2(1.2,1.2)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial_pedestal"]  albedo_color = Color(0.3,0.3,0.3)
+[sub_resource type="BoxMesh" id="BoxMesh_ring"]  size = Vector3(1.0,0.05,1.0)
+[sub_resource type="SphereMesh" id="SphereMesh_icon"]  radius = 0.4  height = 0.8
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky_sel"]  sky_top_color = Color(0.2,0.3,0.5)
+
+[node name="CharacterSelect" type="Node3D"]
+[node name="World" type="Node3D" parent="."]
+[node name="Ground" type="MeshInstance3D" parent="World"]
+mesh = SubResource("PlaneMesh_pedestal")
+material_override = SubResource("StandardMaterial_pedestal")
+transform = Transform3D(1,0,0,0,1,0,0,0,1,0,-0.1,0)
+[node name="DirectionalLight" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(1,0,0,0,0.707107,-0.707107,0,0.707107,0.707107,5,10,5)
+light_energy = 2.0
+shadow_enabled = true
+[node name="WorldEnvironment" type="WorldEnvironment" parent="World"]
+environment = Environment.new()
+environment.sky = Sky.new()
+environment.sky.sky_material = SubResource("ProceduralSkyMaterial_sky_sel")
+environment.glow_enabled = false
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.707107,0,-0.707107,0,1,0,0.707107,0,0.707107,0,2.5,8)
+current = true
+[node name="Root" type="Node" parent="."]
+script = ExtResource("1_sel_script")

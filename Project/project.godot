@@ -1,0 +1,17 @@
+[application]
+config/name="HEYLA Kids: Guardians of Tomorrow"
+config/version="1.0"
+config/main_scene="res://scenes/character_select.tscn"
+
+[input]
+move_forward={"deadzone":0.5,"events":[{"type":"key","keycode":87}]}
+move_backward={"deadzone":0.5,"events":[{"type":"key","keycode":83}]}
+move_left={"deadzone":0.5,"events":[{"type":"key","keycode":65}]}
+move_right={"deadzone":0.5,"events":[{"type":"key","keycode":68}]}
+jump={"deadzone":0.5,"events":[{"type":"key","keycode":32}]}
+skill_cat_vision={"deadzone":0.5,"events":[{"type":"key","keycode":49}]}
+dash={"deadzone":0.5,"events":[{"type":"key","keycode":16777217}]}
+
+[autoload]
+GameManager="*res://scripts/game_manager.gd"
+MissionManager="*res://scripts/mission_manager.gd"
