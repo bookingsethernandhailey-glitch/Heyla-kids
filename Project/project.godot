@@ -11,7 +11,9 @@ move_right={"deadzone":0.5,"events":[{"type":"key","keycode":68}]}
 jump={"deadzone":0.5,"events":[{"type":"key","keycode":32}]}
 skill_cat_vision={"deadzone":0.5,"events":[{"type":"key","keycode":49}]}
 dash={"deadzone":0.5,"events":[{"type":"key","keycode":16777217}]}
+attack={"deadzone":0.5,"events":[{"type":"mouse_button","button_index":1}]}
 
 [autoload]
 GameManager="*res://scripts/game_manager.gd"
 MissionManager="*res://scripts/mission_manager.gd"
+PlayerStats="*res://scripts/player_stats.gd"
