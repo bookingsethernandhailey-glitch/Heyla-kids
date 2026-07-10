@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3]
+
+[node name="HUD" type="CanvasLayer"]
+
+[node name="HealthBar" type="TextureProgress" parent="."]
+anchor_left = 0.02
+anchor_top = 0.02
+anchor_right = 0.35
+anchor_bottom = 0.08
+min_value = 0.0
+max_value = 100.0
+value = 100.0
+
+[node name="XPBar" type="TextureProgress" parent="."]
+anchor_left = 0.02
+anchor_top = 0.09
+anchor_right = 0.35
+anchor_bottom = 0.14
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+
+[node name="Coins" type="Label" parent="."]
+anchor_right = 0.98
+anchor_top = 0.02
+anchor_bottom = 0.08
+text = "Coins: 0"
+align = 2

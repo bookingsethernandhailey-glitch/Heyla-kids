@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3]
+
+[node name="Options" type="Control"]
+
+[node name="VBox" type="VBoxContainer" parent="."]
+anchor_left = 0.3
+anchor_top = 0.2
+anchor_right = 0.7
+anchor_bottom = 0.8
+
+[node name="Title" type="Label" parent="VBox"]
+text = "Options"
+
+[node name="MasterLabel" type="Label" parent="VBox"]
+text = "Master Volume"
+
+[node name="MasterSlider" type="HSlider" parent="VBox"]
+min_value = -80
+max_value = 0
+value = 0
+connect("value_changed", NodePath(".."), "_on_master_volume_changed")
+
+[node name="Back" type="Button" parent="VBox"]
+text = "Back"
+connect("pressed", NodePath(".."), "_on_back_pressed")
+
+[connection signal="value_changed" from="VBox/MasterSlider" to="VBox" method="_on_master_volume_changed"]
+[connection signal="pressed" from="VBox/Back" to="VBox" method="_on_back_pressed"]
