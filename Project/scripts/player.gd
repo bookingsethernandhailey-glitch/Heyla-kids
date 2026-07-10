@@ -15,8 +15,12 @@ var special: String
 
 @onready var camera: Camera3D = $Camera3D
 @onready var mesh_instance: MeshInstance3D = $Body
-@onready var world_env: WorldEnvironment = get_node("/root/Main/World/WorldEnvironment")
-@onready var anim_player: AnimationPlayer = $AnimationPlayer  # placeholder for future animations
+@onready var world_env: WorldEnvironment = get_node_or_null("/root/Main/World/WorldEnvironment")
+# Animation nodes: prefer AnimationTree (state machine) but fall back to AnimationPlayer
+@onready var anim_tree: AnimationTree = (has_node("AnimationTree") ? $AnimationTree : (has_node("Model/AnimationTree") ? $Model/AnimationTree : null))
+var anim_state: AnimationNodeStateMachinePlayback = null
+@onready var anim_player: AnimationPlayer = (has_node("AnimationPlayer") ? $AnimationPlayer : (has_node("Model/AnimationPlayer") ? $Model/AnimationPlayer : null))
+
 @onready var combat: Node = $Combat
 
 var _last_health: int = -1
@@ -25,6 +29,10 @@ func _ready():
 	apply_character(character_id)
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
+	# init animation tree if present
+	if anim_tree:
+		anim_tree.active = true
+		anim_state = anim_tree.get("parameters/playback")
 	# connect combat signals (if combat exists)
 	if combat:
 		if combat.has_signal("health_changed"):
@@ -56,7 +64,8 @@ func _physics_process(delta: float):
 		velocity.z = move_toward(velocity.z, 0, speed)
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = jump_force
-		# Future: play jump animation
+		# play jump animation
+		_play_jump()
 	if special == "night_vision" and Input.is_action_just_pressed("skill_cat_vision"):
 		if world_env and world_env.environment:
 			world_env.environment.glow_enabled = !world_env.environment.glow_enabled
@@ -66,16 +75,90 @@ func _physics_process(delta: float):
 		velocity.x = dash_velocity.x
 		velocity.z = dash_velocity.z
 		print("💨 Dash!")
+	# gravity
 	velocity.y -= 9.8 * delta
+	# move
 	move_and_slide()
-	# Future: update animation states based on velocity
+	# update animations based on movement state
+	_update_animation(direction, delta)
+
+func _update_animation(direction: Vector3, delta: float) -> void:
+	# determine speed on XZ plane
+	var planar_speed := Vector2(velocity.x, velocity.z).length()
+	# airborne handling
+	if not is_on_floor():
+		if velocity.y > 0.1:
+			_play_state("Jump")
+		else:
+			_play_state("Fall")
+		return
+	# grounded movement
+	if planar_speed > (speed * 0.66):
+		_play_state("Run")
+	elif planar_speed > 0.1:
+		_play_state("Walk")
+	else:
+		_play_state("Idle")
+
+# Animation helpers: prefer AnimationTree (state machine) else AnimationPlayer
+func _play_state(state_name: String) -> void:
+	if anim_state:
+		if anim_state.get_current_node() != state_name:
+			anim_state.travel(state_name)
+	elif anim_player:
+		if not anim_player.is_playing() or anim_player.get_current_animation() != state_name.lower():
+			# AnimationPlayer usually uses lowercase names in our import convention
+			if anim_player.has_animation(state_name.lower()):
+				anim_player.play(state_name.lower())
+			# fallback to exact name
+			elif anim_player.has_animation(state_name):
+				anim_player.play(state_name)
+
+func _play_attack(anim_name: String = "attack_1") -> void:
+	if anim_state:
+		# if Attack state uses a parameter to pick animation, set it (optional)
+		if anim_tree.has_parameter("attack_anim"):
+			anim_tree.set("parameters/attack_anim", anim_name)
+		anim_state.travel("Attack")
+	elif anim_player:
+		if anim_player.has_animation(anim_name):
+			anim_player.play(anim_name)
+		elif anim_player.has_animation("attack"):
+			anim_player.play("attack")
+	else:
+		# fallback procedural lunge
+		_play_attack_anim()
+
+func _play_jump() -> void:
+	_play_state("Jump")
+
+func _play_hurt() -> void:
+	if anim_state:
+		anim_state.travel("Hurt")
+	elif anim_player:
+		if anim_player.has_animation("hit"):
+			anim_player.play("hit")
+		elif anim_player.has_animation("hurt"):
+			anim_player.play("hurt")
+	else:
+		_play_hurt_anim()
+
+func _play_death() -> void:
+	if anim_state:
+		anim_state.travel("Death")
+	elif anim_player:
+		if anim_player.has_animation("death"):
+			anim_player.play("death")
+	else:
+		# fallback: default death behavior
+		pass
 
 func _on_combat_health_changed(current, max_val):
 	# play hurt animation if health decreased
 	if _last_health == -1:
 		_last_health = current
 	elif current < _last_health:
-		_play_hurt_anim()
+		_play_hurt()
 		_last_health = current
 	# forward to PlayerStats if present
 	if Engine.has_singleton("PlayerStats"):
@@ -85,6 +168,7 @@ func _on_combat_health_changed(current, max_val):
 
 func _on_combat_died(attacker = null):
 	print("Player died (combat)")
+	_play_death()
 	# TODO: respawn or game-over flow
 
 func _input(event: InputEvent):
@@ -95,9 +179,11 @@ func _input(event: InputEvent):
 		var min_dist = 1e18
 		for e in enemies:
 			if not e: continue
-			if not e.has_method("global_position") and not e.get_parent():
-				continue
-			var target_pos = e.global_position if e is Node3D else (e.get_parent().global_position if e.get_parent() and e.get_parent() is Node3D else null)
+			var target_pos = null
+			if e is Node3D:
+				target_pos = e.global_position
+			elif e.get_parent() and e.get_parent() is Node3D:
+				target_pos = e.get_parent().global_position
 			if target_pos == null:
 				continue
 			var d = global_position.distance_to(target_pos)
@@ -109,7 +195,7 @@ func _input(event: InputEvent):
 			if combat.has_method("try_attack"):
 				attacked = combat.try_attack(nearest)
 			if attacked:
-				_play_attack_anim()
+				_play_attack()
 
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * 0.003)
@@ -118,7 +204,7 @@ func _input(event: InputEvent):
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED)
 
-# --- Simple procedural animations (no external Animation resource required) ---
+# --- Simple procedural animations (fallbacks) ---
 func _play_attack_anim() -> void:
 	if not mesh_instance:
 		return
