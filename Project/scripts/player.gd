@@ -17,10 +17,18 @@ var special: String
 @onready var mesh_instance: MeshInstance3D = $Body
 @onready var world_env: WorldEnvironment = get_node("/root/Main/World/WorldEnvironment")
 @onready var anim_player: AnimationPlayer = $AnimationPlayer  # placeholder for future animations
+@onready var combat: Node = $Combat
 
 func _ready():
 	apply_character(character_id)
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	add_to_group("player")
+	# connect combat signals (if combat exists)
+	if combat:
+		if combat.has_signal("health_changed"):
+			combat.health_changed.connect(_on_combat_health_changed)
+		if combat.has_signal("died"):
+			combat.died.connect(_on_combat_died)
 
 func apply_character(id: String):
 	var data = CHARACTERS.get(id)
@@ -57,7 +65,32 @@ func _physics_process(delta: float):
 	move_and_slide()
 	# Future: update animation states based on velocity
 
+func _on_combat_health_changed(current, max_val):
+	# forward to PlayerStats if present
+	if Engine.has_singleton("PlayerStats"):
+		PlayerStats.health = current
+		PlayerStats.max_health = max_val
+		PlayerStats.stats_changed.emit()
+
+func _on_combat_died():
+	print("Player died (combat)")
+	# TODO: respawn or game-over flow
+
 func _input(event: InputEvent):
+	# attack handling
+	if Input.is_action_just_pressed("attack"):
+		var enemies = get_tree().get_nodes_in_group("enemy")
+		var nearest = null
+		var min_dist = 1e18
+		for e in enemies:
+			if not e: continue
+			var d = global_position.distance_to(e.global_position)
+			if d < min_dist:
+				min_dist = d
+				nearest = e
+		if nearest and combat:
+			combat.try_attack(nearest)
+
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * 0.003)
 		camera.rotate_x(-event.relative.y * 0.003)
