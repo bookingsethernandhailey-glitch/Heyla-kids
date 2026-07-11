@@ -1,0 +1,16 @@
+[gd_scene load_steps=5 format=3]
+
+[node name="Ethern" type="Node3D"]
+
+[node name="Body" type="MeshInstance3D" parent="."]
+mesh = SubResource( 1 )
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="AnimationTree" type="AnimationTree" parent="."]
+active = false
+tree_root = "AnimationNodeStateMachine"
+
+[sub_resource type="CapsuleMesh" id=1]
+radius = 0.37
+height = 1.1
